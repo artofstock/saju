@@ -1,0 +1,15 @@
+{
+  "name": "사주팔자 계산기",
+  "short_name": "사주팔자",
+  "description": "생년월일시로 사주팔자, 오행, 십성, 대운을 자동으로 계산합니다",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#EDE7D9",
+  "theme_color": "#211D17",
+  "lang": "ko",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
