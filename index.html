@@ -63,6 +63,15 @@
       </div>
     </div>
 
+    <div class="field">
+      <span class="label-like">자시(子時) 처리</span>
+      <div class="segmented" id="ziSect">
+        <button type="button" class="seg-btn is-active" data-val="2">조자시·야자시 구분</button>
+        <button type="button" class="seg-btn" data-val="1">자시 통합</button>
+      </div>
+      <p class="field-help" id="ziHelp">밤 11시~12시(야자시)는 그날로, 밤 12시~새벽 1시(조자시·명자시)는 다음날로 계산합니다 — 오늘날 한국 만세력 대다수가 쓰는 방식입니다.</p>
+    </div>
+
     <button type="submit" class="submit-btn">사주 보기</button>
     <p class="form-note">계산은 이 기기 안에서만 이루어지고 어디로도 전송되지 않습니다.</p>
   </form>
@@ -92,20 +101,64 @@
     </div>
 
     <div class="card">
+      <h3 class="section-title">합(合)</h3>
+      <p class="pane-hint">천간과 지지가 서로 묶여 성질이 달라지는 관계입니다. 삼합·반합은 지지 세 글자(申子辰·亥卯未·寅午戌·巳酉丑) 중 모이는 개수로, 육합은 지지 두 글자의 짝으로, 간합은 천간 두 글자의 짝으로 봅니다.</p>
+      <div id="hapResult"></div>
+    </div>
+
+    <div class="card">
       <h3 class="section-title">풀이</h3>
       <ul class="reading-list" id="readingList"></ul>
       <p class="disclaimer">전통 명리학의 상징 체계를 기계적으로 계산한 참고용 결과입니다. 삶의 방향을 정하는 근거보다는 스스로를 돌아보는 도구로 봐주세요.</p>
     </div>
 
     <div class="card">
-      <h3 class="section-title">대운</h3>
+      <h3 class="section-title">운세 흐름</h3>
       <p class="daewoon-meta" id="daewoonMeta"></p>
-      <div class="table-wrap">
-        <table class="daewoon-table" id="daewoonTable"></table>
+
+      <div class="segmented unse-tabs" id="unseTabs">
+        <button type="button" class="seg-btn is-active" data-val="daewoon">대운</button>
+        <button type="button" class="seg-btn" data-val="sewoon">세운</button>
+        <button type="button" class="seg-btn" data-val="wolwoon">월운</button>
+        <button type="button" class="seg-btn" data-val="ilwoon">일운</button>
+      </div>
+
+      <div class="unse-pane" id="pane-daewoon">
+        <p class="pane-hint">10년 단위 대운입니다. 행을 눌러 해당 시기의 세운을 볼 수 있어요.</p>
+        <div class="table-wrap"><table id="daewoonTable"></table></div>
+      </div>
+
+      <div class="unse-pane" id="pane-sewoon" hidden>
+        <div class="pane-controls">
+          <label for="daewoonSelect">대운 선택</label>
+          <select id="daewoonSelect"></select>
+        </div>
+        <p class="pane-hint">선택한 대운 기간의 연도별 세운입니다. 행을 누르면 그 해의 월운을 볼 수 있어요.</p>
+        <div class="table-wrap"><table id="sewoonTable"></table></div>
+      </div>
+
+      <div class="unse-pane" id="pane-wolwoon" hidden>
+        <div class="pane-controls">
+          <label for="sewoonSelect">연도 선택</label>
+          <select id="sewoonSelect"></select>
+        </div>
+        <p class="pane-hint">선택한 해의 달별 월운입니다. 행을 누르면 그 달의 일운을 볼 수 있어요.</p>
+        <div class="table-wrap"><table id="wolwoonTable"></table></div>
+      </div>
+
+      <div class="unse-pane" id="pane-ilwoon" hidden>
+        <div class="pane-controls">
+          <label for="wolwoonSelect">월 선택</label>
+          <select id="wolwoonSelect"></select>
+        </div>
+        <p class="pane-hint">선택한 달의 날짜별 일진(日辰)입니다. 오늘 날짜는 표시가 됩니다.</p>
+        <div class="table-wrap"><table id="ilwoonTable"></table></div>
       </div>
     </div>
 
     <button type="button" class="reset-btn" id="resetBtn">다시 보기</button>
+
+    <p class="closing-note">사주는 참고일 뿐, 결국 삶을 만드는 건 <strong>노력이 6~7할</strong>이라고 봅니다.<br>이 풀이가 맞아떨어지는 부분은 많아야 <strong>5% 안팎</strong>일 거예요.<br>나머지는 오늘 하루 무얼 하느냐에 달려 있습니다.</p>
 
   </section>
 
