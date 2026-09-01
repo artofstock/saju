@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>사주팔자 — 자동 명식 계산기</title>
+<title>사주팔자 v2 — 명리 분석 계산기</title>
 <meta name="theme-color" content="#211D17">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
@@ -16,7 +16,7 @@
 
   <header class="masthead">
     <p class="masthead-mark">八字</p>
-    <h1>사주팔자</h1>
+    <h1>사주팔자 <span class="version-badge">v2</span></h1>
     <p class="masthead-sub">생년월일시 여덟 글자로 뽑는 명식</p>
   </header>
 
@@ -91,6 +91,23 @@
       <h3 class="section-title">오행 분포</h3>
       <div class="wuxing" id="wuxing"></div>
       <p class="reading-line" id="strengthLine"></p>
+    </div>
+
+    <div class="card analysis-card">
+      <h3 class="section-title">명리 핵심 분석</h3>
+      <div class="analysis-grid" id="coreAnalysis"></div>
+      <div class="analysis-note">신강·신약과 용희신은 오행 분포, 월령, 통근 등을 단순화한 참고용 계산입니다. 학파에 따라 판단이 달라질 수 있습니다.</div>
+    </div>
+
+    <div class="card">
+      <h3 class="section-title">지장간 · 12운성</h3>
+      <div class="table-wrap"><table id="detailTable"></table></div>
+    </div>
+
+    <div class="card">
+      <h3 class="section-title">합충형파해</h3>
+      <p class="pane-hint">원국의 천간·지지 사이에서 확인되는 주요 관계를 정리합니다. 관계가 있다고 해서 반드시 길하거나 흉하다는 뜻은 아닙니다.</p>
+      <div id="relationResult"></div>
     </div>
 
     <div class="card">

@@ -32,6 +32,11 @@
     { zhis:["寅","午","戌"], wangji:"午", el:"火", name:"인오술" },
     { zhis:["巳","酉","丑"], wangji:"酉", el:"金", name:"사유축" }
   ];
+  var CHUNG = [["子","午"],["丑","未"],["寅","申"],["卯","酉"],["辰","戌"],["巳","亥"]];
+  var PA = [["子","酉"],["丑","辰"],["寅","亥"],["卯","午"],["申","巳"],["戌","未"]];
+  var HAE = [["子","未"],["丑","午"],["寅","巳"],["卯","辰"],["申","亥"],["酉","戌"]];
+  var XING = [["寅","巳","申"],["丑","戌","未"],["子","卯"],["辰","辰"],["午","午"],["酉","酉"],["亥","亥"]];
+
   var YUKHAP = [
     { a:"子", b:"丑", el:"土" },
     { a:"寅", b:"亥", el:"木" },
@@ -152,6 +157,9 @@
     renderPillars(pillarsData, hasTime);
     var wx = renderWuxing(pillarsData);
     renderSipsung(bz, pillarsData, hasTime);
+    renderCoreAnalysis(bz, pillarsData, wx, hasTime);
+    renderDetailTable(bz, pillarsData, hasTime);
+    renderRelations(pillarsData, hasTime);
     renderHap(pillarsData, hasTime);
     renderReading(bz, pillarsData, wx, hasTime);
     renderUnseFlow(bz, genderVal, hasTime);
@@ -336,23 +344,106 @@
     document.getElementById("hapResult").innerHTML = html;
   }
 
+
+  // ---------- 명리 핵심 분석 ----------
+  function calcStrength(bz, pillarsData, hasTime){
+    var dayGan = pillarsData[2].gan, dayEl = GAN_WUXING[dayGan];
+    var resourceEl = Object.keys(GENERATES).filter(function(k){return GENERATES[k]===dayEl;})[0];
+    var support=0, total=0;
+    pillarsData.forEach(function(p, i){
+      if(p.gan === "?") return;
+      var sw = (i===1 ? 2.5 : (i===2 ? 1.5 : 1));
+      total += sw;
+      if(GAN_WUXING[p.gan]===dayEl || GAN_WUXING[p.gan]===resourceEl) support += sw;
+      if(p.zhi && p.zhi!=="?"){
+        var zw = (i===1 ? 3 : (i===2 ? 1.5 : 1));
+        total += zw;
+        if(LunarUtil.WU_XING_ZHI[p.zhi]===dayEl || LunarUtil.WU_XING_ZHI[p.zhi]===resourceEl) support += zw;
+        (LunarUtil.ZHI_HIDE_GAN[p.zhi]||[]).forEach(function(hg, n){
+          total += 0.35;
+          if(GAN_WUXING[hg]===dayEl || GAN_WUXING[hg]===resourceEl) support += n===0 ? 0.28 : 0.18;
+        });
+      }
+    });
+    var ratio = total ? support/total : 0.5;
+    return {ratio:ratio, label:ratio<0.38?"신약(身弱)":ratio>0.62?"신강(身强)":"중화(中和)"};
+  }
+
+  function renderCoreAnalysis(bz, pillarsData, wx, hasTime){
+    var st=calcStrength(bz,pillarsData,hasTime), dayEl=GAN_WUXING[pillarsData[2].gan];
+    var resource=Object.keys(GENERATES).filter(function(k){return GENERATES[k]===dayEl;})[0];
+    var control=Object.keys(GENERATES).filter(function(k){return GENERATES[k]===dayEl;})[0];
+    // dayEl을 극하는 오행: controler -> dayEl
+    var controller=Object.keys(GENERATES).filter(function(k){return GENERATES[k]===dayEl;})[0];
+    var output=GENERATES[dayEl], wealth=GENERATES[output], same=dayEl;
+    var yong, hui;
+    if(st.label==="신약(身弱)"){ yong=resource; hui=same; }
+    else if(st.label==="신강(身强)"){ yong=output; hui=GENERATES[output]; }
+    else { yong=resource; hui=output; }
+    var items=[
+      ["일간", GAN_KR[pillarsData[2].gan]+"("+pillarsData[2].gan+") · "+WUXING_KR[dayEl]],
+      ["강약", st.label+" · "+Math.round(st.ratio*100)+"점"],
+      ["월령", WUXING_KR[LunarUtil.WU_XING_ZHI[pillarsData[1].zhi]]+"("+pillarsData[1].zhi+") · 월지 중심"],
+      ["용신 후보", WUXING_KR[yong]+" · "+(st.label==="신약(身弱)"?"일간을 생조하는 방향":"일간의 과다한 힘을 설기하는 방향")],
+      ["희신 후보", WUXING_KR[hui]],
+      ["생(生)", WUXING_KR[resource]+" → 일간"],
+      ["설기(泄氣)", WUXING_KR[output]+" → "+WUXING_KR[wealth]]
+    ];
+    document.getElementById("coreAnalysis").innerHTML=items.map(function(x){
+      return '<div class="analysis-item"><span>'+x[0]+'</span><b>'+x[1]+'</b></div>';
+    }).join("");
+  }
+
+  function renderDetailTable(bz,pillarsData,hasTime){
+    var ds=[["년","year","getYearDiShi","getYearHideGan"],["월","month","getMonthDiShi","getMonthHideGan"],["일","day","getDayDiShi","getDayHideGan"],["시","time","getTimeDiShi","getTimeHideGan"]];
+    var rows=ds.map(function(x){
+      if(x[1]==="time"&&!hasTime) return '<tr><th>'+x[0]+'주</th><td>—</td><td>시간 미상</td></tr>';
+      var hides=bz[x[3]]().map(function(g){return g+"("+GAN_KR[g]+")";}).join(" · ");
+      return '<tr><th>'+x[0]+'주</th><td class="hanja-cell">'+hides+'</td><td>'+bz[x[2]]()+'</td></tr>';
+    }).join("");
+    document.getElementById("detailTable").innerHTML="<tr><th>구분</th><th>지장간</th><th>12운성</th></tr>"+rows;
+  }
+
+  function pairMatch(a,b,pairs){
+    return pairs.some(function(p){return (p[0]===a&&p[1]===b)||(p[0]===b&&p[1]===a);});
+  }
+  function renderRelations(pillarsData,hasTime){
+    var ps=pillarsData.filter(function(p){return hasTime||p.key!=="time";});
+    var z=ps.map(function(p){return p.zhi;}), g=ps.map(function(p){return p.gan;});
+    var groups=[];
+    for(var i=0;i<z.length;i++) for(var j=i+1;j<z.length;j++){
+      if(pairMatch(z[i],z[j],CHUNG)) groups.push(["충",z[i]+z[j], "정면으로 부딪히는 지지 관계"]);
+      if(pairMatch(z[i],z[j],PA)) groups.push(["파",z[i]+z[j], "기존 질서가 깨지거나 변동이 생기기 쉬운 관계"]);
+      if(pairMatch(z[i],z[j],HAE)) groups.push(["해",z[i]+z[j], "서로 은근히 방해하거나 소모시키는 관계"]);
+    }
+    var xingPairs=[["寅","巳"],["巳","申"],["丑","戌"],["戌","未"],["丑","未"]];
+    xingPairs.forEach(function(pair){
+      if(z.indexOf(pair[0])>=0&&z.indexOf(pair[1])>=0)
+        groups.push(["형",pair.join(""),"삼형의 일부가 성립하는 관계"]);
+    });
+    [["辰","辰"],["午","午"],["酉","酉"],["亥","亥"]].forEach(function(pair){
+      if(z.filter(function(v){return v===pair[0];}).length>=2)
+        groups.push(["형",pair[0]+pair[1],"자형(自刑) 관계"]);
+    });
+    var html=groups.length?groups.map(function(x){return '<div class="relation-item"><b>'+x[0]+' · '+x[1]+'</b><span>'+x[2]+'</span></div>';}).join(""):'<p class="hap-empty">주요 충·형·파·해가 확인되지 않습니다.</p>';
+    document.getElementById("relationResult").innerHTML=html;
+  }
+
   function renderReading(bz, pillarsData, wx, hasTime){
     var dayGan = pillarsData[2].gan;
     var dayEl = GAN_WUXING[dayGan];
     var generatorEl = null;
     Object.keys(GENERATES).forEach(function(k){ if(GENERATES[k] === dayEl) generatorEl = k; });
 
-    var supportRatio = (wx.score[dayEl] + wx.score[generatorEl]) / (wx.total || 1);
-    var strengthLine, strengthLabel;
-    if(supportRatio < 0.32){
-      strengthLabel = "신약(身弱)";
-      strengthLine = "일간 " + GAN_KR[dayGan] + WUXING_KR[dayEl] + "를 도와주는 오행(" + WUXING_KR[dayEl] + "·" + WUXING_KR[generatorEl] + ")이 전체의 " + Math.round(supportRatio*100) + "% 정도로, 주변 오행에 비해 힘이 약한 신약 사주로 보여요.";
-    } else if(supportRatio > 0.5){
-      strengthLabel = "신강(身强)";
-      strengthLine = "일간 " + GAN_KR[dayGan] + WUXING_KR[dayEl] + "를 도와주는 오행이 전체의 " + Math.round(supportRatio*100) + "%로 두터운 편이라, 스스로의 힘이 강한 신강 사주로 보여요.";
+    var strength = calcStrength(bz, pillarsData, hasTime);
+    var supportRatio = strength.ratio;
+    var strengthLine, strengthLabel = strength.label;
+    if(supportRatio < 0.38){
+      strengthLine = "월령과 통근을 포함한 간이 점수에서 일간을 돕는 힘이 " + Math.round(supportRatio*100) + "%입니다. 신약 쪽으로 기운 명식으로 참고할 수 있습니다.";
+    } else if(supportRatio > 0.62){
+      strengthLine = "월령과 통근을 포함한 간이 점수에서 일간을 돕는 힘이 " + Math.round(supportRatio*100) + "%입니다. 신강 쪽으로 기운 명식으로 참고할 수 있습니다.";
     } else {
-      strengthLabel = "중화(中和)";
-      strengthLine = "일간을 돕는 오행과 소모시키는 오행이 " + Math.round(supportRatio*100) + "% 안팎으로 비교적 균형 잡힌 사주예요.";
+      strengthLine = "월령과 통근을 포함한 간이 점수에서 일간을 돕는 힘이 " + Math.round(supportRatio*100) + "%입니다. 중화에 가까운 편으로 참고할 수 있습니다.";
     }
     document.getElementById("strengthLine").textContent = strengthLine;
 

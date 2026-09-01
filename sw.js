@@ -1,4 +1,4 @@
-var CACHE = "saju-pwa-v1";
+var CACHE = "saju-pwa-v2";
 var ASSETS = [
   "./",
   "./index.html",
