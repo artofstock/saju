@@ -68,6 +68,19 @@ body{
   margin: 8px 0 0;
 }
 
+/* 십성 배치를 색상으로 구분 */
+.sipsung-table td[data-sipsung="비견"],
+.sipsung-table td[data-sipsung="겁재"]{ color: #1F5C8B; }
+.sipsung-table td[data-sipsung="식신"],
+.sipsung-table td[data-sipsung="상관"]{ color: #B23A2E; }
+.sipsung-table td[data-sipsung="편재"],
+.sipsung-table td[data-sipsung="정재"]{ color: #C9992D; }
+.sipsung-table td[data-sipsung="편관"],
+.sipsung-table td[data-sipsung="정관"]{ color: #8A8272; }
+.sipsung-table td[data-sipsung="편인"],
+.sipsung-table td[data-sipsung="정인"]{ color: #26241F; }
+
+
 /* ---------- cards ---------- */
 
 .card{
@@ -76,6 +89,7 @@ body{
   border-radius: 4px;
   padding: 22px;
   margin-bottom: 16px;
+  box-shadow: 0 1px 2px rgba(33,29,23,0.05);
 }
 
 .form-card{ padding: 24px 22px; }
@@ -99,7 +113,7 @@ label, .label-like{
   margin-bottom: 6px;
 }
 
-input[type=text], input[type=date], input[type=time]{
+input[type=text], input[type=date], input[type=time], select{
   width:100%;
   padding: 11px 12px;
   border: 1px solid var(--line);
@@ -109,10 +123,56 @@ input[type=text], input[type=date], input[type=time]{
   font-family: var(--sans);
   font-size: 15px;
 }
-input[type=text]:focus, input[type=date]:focus, input[type=time]:focus{
+input[type=text]:focus-visible, input[type=date]:focus-visible, input[type=time]:focus-visible,
+select:focus-visible, button:focus-visible{
   outline: 2px solid var(--gold);
   outline-offset: 1px;
 }
+
+.lunar-date-row{
+  display:flex;
+  gap: 8px;
+}
+.lunar-date-row select{
+  flex:1;
+  min-width:0;
+  padding: 11px 6px;
+  text-align:center;
+}
+
+.form-error{
+  font-size: 13px;
+  color: var(--fire);
+  background: rgba(178,58,46,0.08);
+  border: 1px solid rgba(178,58,46,0.35);
+  border-radius: 3px;
+  padding: 10px 12px;
+  margin: -4px 0 16px;
+  line-height: 1.5;
+}
+
+.sipsung-legend{
+  list-style:none;
+  display:flex;
+  flex-wrap:wrap;
+  gap: 10px 16px;
+  margin: 0 0 14px;
+  padding: 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.sipsung-legend li{ display:flex; align-items:center; gap: 6px; }
+.legend-dot{
+  width:9px; height:9px;
+  border-radius:50%;
+  display:inline-block;
+  flex-shrink:0;
+}
+.legend-dot[data-g="bigyeop"]{ background: var(--wood); }
+.legend-dot[data-g="siksang"]{ background: var(--fire); }
+.legend-dot[data-g="jaeseong"]{ background: var(--earth); }
+.legend-dot[data-g="gwanseong"]{ background: var(--metal); }
+.legend-dot[data-g="inseong"]{ background: var(--water); }
 
 .segmented{
   display:flex;
@@ -132,6 +192,10 @@ input[type=text]:focus, input[type=date]:focus, input[type=time]:focus{
   cursor:pointer;
 }
 .seg-btn:last-child{ border-right:none; }
+.seg-btn:not(.is-active):hover{
+  background: var(--paper-deep);
+  color: var(--ink);
+}
 .seg-btn.is-active{
   background: var(--ink);
   color: var(--paper);
@@ -185,7 +249,11 @@ input[type=text]:focus, input[type=date]:focus, input[type=time]:focus{
   cursor:pointer;
   margin-top: 4px;
 }
+.submit-btn:hover{ background: var(--ink-soft); }
 .submit-btn:active{ background: var(--ink-soft); }
+.submit-btn:disabled{ opacity: 0.55; cursor: default; }
+
+.reset-btn:hover{ background: rgba(33,29,23,0.05); }
 
 .form-note{
   font-size: 12px;
@@ -244,6 +312,7 @@ input[type=text]:focus, input[type=date]:focus, input[type=time]:focus{
 .pillar.is-day{
   background: var(--ink);
   border-color: var(--ink);
+  box-shadow: 0 2px 6px rgba(33,29,23,0.25);
 }
 .pillar.is-day .pillar-label,
 .pillar.is-day .pillar-reading{
@@ -401,7 +470,8 @@ tr.is-current td{ background: rgba(201,153,45,0.15); font-weight:600; }
 }
 
 table tr[data-clickable]{ cursor: pointer; }
-table tr[data-clickable]:active{ background: rgba(0,0,0,0.04); }
+table tr[data-clickable]:hover{ background: rgba(0,0,0,0.03); }
+table tr[data-clickable]:active{ background: rgba(0,0,0,0.06); }
 
 tr.is-today td{ background: rgba(178,58,46,0.12); font-weight:600; }
 

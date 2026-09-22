@@ -58,7 +58,14 @@
   var calTypeSeg = document.getElementById("calType");
   var genderSeg = document.getElementById("gender");
   var ziSectSeg = document.getElementById("ziSect");
-  var leapField = document.getElementById("leapField");
+  var solarDateField = document.getElementById("solarDateField");
+  var lunarDateField = document.getElementById("lunarDateField");
+  var dateInput = document.getElementById("date");
+  var lunarYearSel = document.getElementById("lunarYear");
+  var lunarMonthSel = document.getElementById("lunarMonth");
+  var lunarDaySel = document.getElementById("lunarDay");
+  var lunarPreview = document.getElementById("lunarPreview");
+  var formError = document.getElementById("formError");
   var timeUnknown = document.getElementById("timeUnknown");
   var timeInput = document.getElementById("time");
   var resetBtn = document.getElementById("resetBtn");
@@ -68,6 +75,7 @@
   var wolwoonSelect = document.getElementById("wolwoonSelect");
 
   var state = { calType: "solar", gender: "1", ziSect: "2" };
+  var flow = {};
 
   var ZI_HELP = {
     "2": "밤 11시~12시(야자시)는 그날로, 밤 12시~새벽 1시(조자시·명자시)는 다음날로 계산합니다 — 오늘날 한국 만세력 대다수가 쓰는 방식입니다.",
@@ -75,23 +83,119 @@
   };
 
   function bindSegmented(container, key, onChange){
+    Array.prototype.forEach.call(container.querySelectorAll(".seg-btn"), function(b){
+      b.setAttribute("aria-pressed", b.classList.contains("is-active") ? "true" : "false");
+    });
     container.addEventListener("click", function(e){
       var btn = e.target.closest(".seg-btn");
       if(!btn) return;
       Array.prototype.forEach.call(container.querySelectorAll(".seg-btn"), function(b){
         b.classList.toggle("is-active", b === btn);
+        b.setAttribute("aria-pressed", b === btn ? "true" : "false");
       });
       state[key] = btn.getAttribute("data-val");
       if(onChange) onChange();
     });
   }
   bindSegmented(calTypeSeg, "calType", function(){
-    leapField.hidden = (state.calType !== "lunar");
+    var isLunar = (state.calType === "lunar");
+    solarDateField.hidden = isLunar;
+    lunarDateField.hidden = !isLunar;
+    if(isLunar) initLunarSelects();
+    clearError();
   });
   bindSegmented(genderSeg, "gender");
   bindSegmented(ziSectSeg, "ziSect", function(){
     document.getElementById("ziHelp").textContent = ZI_HELP[state.ziSect];
   });
+
+  function clearError(){
+    formError.hidden = true;
+    formError.textContent = "";
+  }
+  function showError(msg){
+    formError.textContent = msg;
+    formError.hidden = false;
+    formError.scrollIntoView({block:"center", behavior:"smooth"});
+  }
+
+  // ---------- 음력 생년월일 선택(유효한 날짜만 고를 수 있도록 연/월/일 select 구성) ----------
+
+  var lunarSelectsReady = false;
+
+  function initLunarSelects(){
+    if(lunarSelectsReady) return;
+    lunarSelectsReady = true;
+
+    var thisYear = new Date().getFullYear();
+    var minYear = 1900, maxYear = 2035;
+    var opts = "";
+    for(var y = maxYear; y >= minYear; y--){
+      opts += '<option value="'+y+'">'+y+'년</option>';
+    }
+    lunarYearSel.innerHTML = opts;
+    lunarYearSel.value = String(Math.min(Math.max(thisYear - 30, minYear), maxYear));
+
+    buildLunarMonthOptions();
+    buildLunarDayOptions();
+    updateLunarPreview();
+
+    lunarYearSel.addEventListener("change", function(){
+      buildLunarMonthOptions();
+      buildLunarDayOptions();
+      updateLunarPreview();
+    });
+    lunarMonthSel.addEventListener("change", function(){
+      buildLunarDayOptions();
+      updateLunarPreview();
+    });
+    lunarDaySel.addEventListener("change", updateLunarPreview);
+  }
+
+  function buildLunarMonthOptions(){
+    var year = Number(lunarYearSel.value);
+    var prevValue = lunarMonthSel.value;
+    var leapMonth = 0;
+    try{ leapMonth = window.LunarYear.fromYear(year).getLeapMonth(); } catch(err){ leapMonth = 0; }
+
+    var opts = "";
+    for(var m = 1; m <= 12; m++){
+      opts += '<option value="'+m+'">'+m+'월</option>';
+      if(leapMonth === m){
+        opts += '<option value="'+(-m)+'">윤'+m+'월</option>';
+      }
+    }
+    lunarMonthSel.innerHTML = opts;
+    if(prevValue && lunarMonthSel.querySelector('option[value="'+prevValue+'"]')){
+      lunarMonthSel.value = prevValue;
+    }
+  }
+
+  function buildLunarDayOptions(){
+    var year = Number(lunarYearSel.value);
+    var month = Number(lunarMonthSel.value);
+    var prevValue = lunarDaySel.value;
+    var dayCount = 30;
+    try{ dayCount = window.LunarMonth.fromYm(year, month).getDayCount(); } catch(err){ dayCount = 30; }
+
+    var opts = "";
+    for(var d = 1; d <= dayCount; d++){
+      opts += '<option value="'+d+'">'+d+'일</option>';
+    }
+    lunarDaySel.innerHTML = opts;
+    if(prevValue && Number(prevValue) <= dayCount){
+      lunarDaySel.value = prevValue;
+    }
+  }
+
+  function updateLunarPreview(){
+    var year = Number(lunarYearSel.value);
+    var month = Number(lunarMonthSel.value);
+    var day = Number(lunarDaySel.value);
+    var isLeap = month < 0;
+    lunarPreview.textContent =
+      "선택한 음력 날짜: " + year + "년 " + (isLeap ? "윤" : "") + Math.abs(month) + "월 " + day + "일";
+  }
 
   timeUnknown.addEventListener("change", function(){
     timeInput.disabled = timeUnknown.checked;
@@ -99,6 +203,7 @@
   });
 
   resetBtn.addEventListener("click", function(){
+    clearError();
     resultEl.hidden = true;
     form.hidden = false;
     window.scrollTo({top:0, behavior:"smooth"});
@@ -108,12 +213,9 @@
 
   form.addEventListener("submit", function(e){
     e.preventDefault();
+    clearError();
 
-    var name = document.getElementById("name").value.trim() || "이";
-    var dateVal = document.getElementById("date").value;
-    if(!dateVal){ return; }
-    var parts = dateVal.split("-").map(Number);
-    var y = parts[0], m = parts[1], d = parts[2];
+    var name = document.getElementById("name").value.trim();
 
     var hasTime = !timeUnknown.checked && !!timeInput.value;
     var hh = 12, mm = 0;
@@ -125,13 +227,17 @@
     var lunar;
     try{
       if(state.calType === "solar"){
-        lunar = Solar.fromYmdHms(y, m, d, hh, mm, 0).getLunar();
+        var dateVal = dateInput.value;
+        if(!dateVal){ showError("생년월일을 입력해주세요."); dateInput.focus(); return; }
+        var parts = dateVal.split("-").map(Number);
+        lunar = Solar.fromYmdHms(parts[0], parts[1], parts[2], hh, mm, 0).getLunar();
       } else {
-        var isLeap = document.getElementById("leap").checked;
-        lunar = window.Lunar.fromYmdHms(y, isLeap ? -m : m, d, hh, mm, 0);
+        initLunarSelects();
+        var y = Number(lunarYearSel.value), m = Number(lunarMonthSel.value), d = Number(lunarDaySel.value);
+        lunar = window.Lunar.fromYmdHms(y, m, d, hh, mm, 0);
       }
     } catch(err){
-      alert("입력하신 날짜를 계산할 수 없어요. 날짜를 다시 확인해주세요.\n(" + err.message + ")");
+      showError("입력하신 날짜를 계산할 수 없어요. 날짜를 다시 확인해주세요. (" + err.message + ")");
       return;
     }
 
@@ -149,7 +255,7 @@
       { key:"time",  label:"시주", gan: hasTime ? bz.getTimeGan() : "?", zhi: hasTime ? bz.getTimeZhi() : "?" }
     ];
 
-    document.getElementById("resultName").textContent = name + " 님의 사주";
+    document.getElementById("resultName").textContent = name ? (name + " 님의 사주") : "사주 결과";
     document.getElementById("resultMeta").textContent =
       lunar.getSolar().toYmd() + " (음력 " + lunar.getYearInGanZhi() + "년 " + lunar.getMonthInChinese() + "월 " + lunar.getDayInChinese() + ")" +
       (hasTime ? "" : " · 시간 미상");
@@ -346,53 +452,129 @@
 
 
   // ---------- 명리 핵심 분석 ----------
-  function calcStrength(bz, pillarsData, hasTime){
-    var dayGan = pillarsData[2].gan, dayEl = GAN_WUXING[dayGan];
-    var resourceEl = Object.keys(GENERATES).filter(function(k){return GENERATES[k]===dayEl;})[0];
-    var support=0, total=0;
-    pillarsData.forEach(function(p, i){
-      if(p.gan === "?") return;
-      var sw = (i===1 ? 2.5 : (i===2 ? 1.5 : 1));
-      total += sw;
-      if(GAN_WUXING[p.gan]===dayEl || GAN_WUXING[p.gan]===resourceEl) support += sw;
-      if(p.zhi && p.zhi!=="?"){
-        var zw = (i===1 ? 3 : (i===2 ? 1.5 : 1));
-        total += zw;
-        if(LunarUtil.WU_XING_ZHI[p.zhi]===dayEl || LunarUtil.WU_XING_ZHI[p.zhi]===resourceEl) support += zw;
-        (LunarUtil.ZHI_HIDE_GAN[p.zhi]||[]).forEach(function(hg, n){
-          total += 0.35;
-          if(GAN_WUXING[hg]===dayEl || GAN_WUXING[hg]===resourceEl) support += n===0 ? 0.28 : 0.18;
-        });
-      }
-    });
-    var ratio = total ? support/total : 0.5;
-    return {ratio:ratio, label:ratio<0.38?"신약(身弱)":ratio>0.62?"신강(身强)":"중화(中和)"};
-  }
+	function calcStrength(bz, pillarsData, hasTime){
+	  var dayGan = pillarsData[2].gan, dayEl = GAN_WUXING[dayGan];
+	  var resourceEl = Object.keys(GENERATES).filter(function(k){return GENERATES[k]===dayEl;})[0];
+	  var sameEl = dayEl;
+	  
+	  var support = 0, total = 0;
+	  var detail = { month: 0, day: 0, hour: 0, year: 0, ganSupport: 0, zhiSupport: 0, hideSupport: 0 };
+	  
+	  pillarsData.forEach(function(p, i){
+		if(p.gan === "?") return;
+		
+		// 천간 가중치: 월간 1.5, 일간(본인) 제외, 년간/시간 1.0
+		var ganW = (i === 1 ? 1.5 : (i === 2 ? 0 : 1.0));
+		if(i !== 2){ // 일간 자신은 제외
+		  total += ganW;
+		  if(GAN_WUXING[p.gan] === sameEl || GAN_WUXING[p.gan] === resourceEl){
+			support += ganW;
+			detail.ganSupport += ganW;
+		  }
+		}
+		
+		// 지지 가중치: 월지 3.0, 일지 2.0, 시지 1.5, 년지 1.0
+		if(p.zhi && p.zhi !== "?"){
+		  var zhiW = (i === 1 ? 3.0 : (i === 2 ? 2.0 : (i === 3 ? 1.5 : 1.0)));
+		  total += zhiW;
+		  if(LunarUtil.WU_XING_ZHI[p.zhi] === sameEl || LunarUtil.WU_XING_ZHI[p.zhi] === resourceEl){
+			support += zhiW;
+			detail.zhiSupport += zhiW;
+		  }
+		  
+		  // 지장간: 본기 0.7, 중기 0.4, 여기 0.2
+		  var hides = LunarUtil.ZHI_HIDE_GAN[p.zhi] || [];
+		  var hideWeights = [0.7, 0.4, 0.2];
+		  hides.forEach(function(hg, n){
+			var hw = hideWeights[n] || 0.1;
+			total += hw;
+			if(GAN_WUXING[hg] === sameEl || GAN_WUXING[hg] === resourceEl){
+			  support += hw;
+			  detail.hideSupport += hw;
+			}
+		  });
+		}
+		
+		if(i === 1) detail.month = support; // 월령 기여도
+	  });
+	  
+	  var ratio = total ? support / total : 0.5;
+	  
+	  // 월령 득실 판정 (월지가 일간을 생조하는가)
+	  var monthEl = LunarUtil.WU_XING_ZHI[pillarsData[1].zhi];
+	  var deukRyeong = (monthEl === sameEl || monthEl === resourceEl);
+	  
+	  var label;
+	  if(ratio < 0.35) label = "신약(身弱)";
+	  else if(ratio > 0.65) label = "신강(身强)";
+	  else label = "중화(中和)";
+	  
+	  return { 
+		ratio: ratio, 
+		label: label, 
+		deukRyeong: deukRyeong,
+		support: support,
+		total: total,
+		detail: detail
+	  };
+	}
 
-  function renderCoreAnalysis(bz, pillarsData, wx, hasTime){
-    var st=calcStrength(bz,pillarsData,hasTime), dayEl=GAN_WUXING[pillarsData[2].gan];
-    var resource=Object.keys(GENERATES).filter(function(k){return GENERATES[k]===dayEl;})[0];
-    var control=Object.keys(GENERATES).filter(function(k){return GENERATES[k]===dayEl;})[0];
-    // dayEl을 극하는 오행: controler -> dayEl
-    var controller=Object.keys(GENERATES).filter(function(k){return GENERATES[k]===dayEl;})[0];
-    var output=GENERATES[dayEl], wealth=GENERATES[output], same=dayEl;
-    var yong, hui;
-    if(st.label==="신약(身弱)"){ yong=resource; hui=same; }
-    else if(st.label==="신강(身强)"){ yong=output; hui=GENERATES[output]; }
-    else { yong=resource; hui=output; }
-    var items=[
-      ["일간", GAN_KR[pillarsData[2].gan]+"("+pillarsData[2].gan+") · "+WUXING_KR[dayEl]],
-      ["강약", st.label+" · "+Math.round(st.ratio*100)+"점"],
-      ["월령", WUXING_KR[LunarUtil.WU_XING_ZHI[pillarsData[1].zhi]]+"("+pillarsData[1].zhi+") · 월지 중심"],
-      ["용신 후보", WUXING_KR[yong]+" · "+(st.label==="신약(身弱)"?"일간을 생조하는 방향":"일간의 과다한 힘을 설기하는 방향")],
-      ["희신 후보", WUXING_KR[hui]],
-      ["생(生)", WUXING_KR[resource]+" → 일간"],
-      ["설기(泄氣)", WUXING_KR[output]+" → "+WUXING_KR[wealth]]
-    ];
-    document.getElementById("coreAnalysis").innerHTML=items.map(function(x){
-      return '<div class="analysis-item"><span>'+x[0]+'</span><b>'+x[1]+'</b></div>';
-    }).join("");
-  }
+	function renderCoreAnalysis(bz, pillarsData, wx, hasTime){
+	  var st = calcStrength(bz, pillarsData, hasTime);
+	  var dayGan = pillarsData[2].gan;
+	  var dayEl = GAN_WUXING[dayGan];
+	  var resourceEl = Object.keys(GENERATES).filter(function(k){return GENERATES[k]===dayEl;})[0];
+	  var outputEl = GENERATES[dayEl];        // 일간이 생하는 오행 (식상)
+	  var wealthEl = GENERATES[outputEl];      // 일간이 극하는 오행 (재성)
+	  var controllerEl = null;                 // 일간을 극하는 오행 (관성)
+	  var controlledEl = null;                 // 일간을 생하는 오행의... (인성)
+	  
+	  // 일간을 극하는 오행 찾기: X → dayEl인 X
+	  Object.keys(GENERATES).forEach(function(k){
+		if(GENERATES[k] === dayEl) resourceEl = k;   // 인성
+		if(GENERATES[dayEl] === k) outputEl = k;     // 식상
+	  });
+	  // 일간이 극하는 오행: dayEl → Y
+	  Object.keys(GENERATES).forEach(function(k){
+		if(GENERATES[dayEl] === k) outputEl = k;
+	  });
+	  wealthEl = GENERATES[outputEl];
+	  // 일간을 극하는 오행: Z → dayEl
+	  Object.keys(GENERATES).forEach(function(k){
+		if(GENERATES[k] === dayEl) resourceEl = k;
+	  });
+	  // 관성: 일간을 극하는 것 = dayEl이 생하는 것의... 
+	  // 오행 상극: 木克土, 火克金, 土克水, 金克木, 水克火
+	  var KE = {"木":"土","火":"金","土":"水","金":"木","水":"火"};
+	  var controllerEl = Object.keys(KE).filter(function(k){ return KE[k] === dayEl; })[0];
+	  var controlledBy = KE[dayEl]; // 일간이 극하는 오행 = 재성
+	  
+	  var yong, hui;
+	  if(st.label === "신약(身弱)"){
+		yong = resourceEl;  // 인성으로 생조
+		hui = dayEl;        // 비겁으로 돕기
+	  } else if(st.label === "신강(身强)"){
+		yong = outputEl;    // 식상으로 설기
+		hui = wealthEl;     // 재성으로 소모
+	  } else {
+		yong = resourceEl;
+		hui = outputEl;
+	  }
+	  
+	  var items = [
+		["일간", GAN_KR[dayGan] + "(" + dayGan + ") · " + WUXING_KR[dayEl]],
+		["강약", st.label + " · " + Math.round(st.ratio * 100) + "점"],
+		["월령", WUXING_KR[LunarUtil.WU_XING_ZHI[pillarsData[1].zhi]] + "(" + pillarsData[1].zhi + ") · " + (st.deukRyeong ? "득령(得令)" : "실령(失令)")],
+		["용신 후보", WUXING_KR[yong] + " · " + (st.label === "신약(身弱)" ? "일간을 생조하는 방향" : (st.label === "신강(身强)" ? "과다한 힘을 설기하는 방향" : "균형을 맞추는 방향"))],
+		["희신 후보", WUXING_KR[hui]],
+		["생(生)", WUXING_KR[resourceEl] + " → 일간 → " + WUXING_KR[outputEl]],
+		["극(克)", WUXING_KR[controllerEl] + " → 일간 → " + WUXING_KR[controlledBy]]
+	  ];
+	  
+	  document.getElementById("coreAnalysis").innerHTML = items.map(function(x){
+		return '<div class="analysis-item"><span>' + x[0] + '</span><b>' + x[1] + '</b></div>';
+	  }).join("");
+	}
 
   function renderDetailTable(bz,pillarsData,hasTime){
     var ds=[["년","year","getYearDiShi","getYearHideGan"],["월","month","getMonthDiShi","getMonthHideGan"],["일","day","getDayDiShi","getDayHideGan"],["시","time","getTimeDiShi","getTimeHideGan"]];
@@ -429,65 +611,87 @@
     document.getElementById("relationResult").innerHTML=html;
   }
 
-  function renderReading(bz, pillarsData, wx, hasTime){
-    var dayGan = pillarsData[2].gan;
-    var dayEl = GAN_WUXING[dayGan];
-    var generatorEl = null;
-    Object.keys(GENERATES).forEach(function(k){ if(GENERATES[k] === dayEl) generatorEl = k; });
-
-    var strength = calcStrength(bz, pillarsData, hasTime);
-    var supportRatio = strength.ratio;
-    var strengthLine, strengthLabel = strength.label;
-    if(supportRatio < 0.38){
-      strengthLine = "월령과 통근을 포함한 간이 점수에서 일간을 돕는 힘이 " + Math.round(supportRatio*100) + "%입니다. 신약 쪽으로 기운 명식으로 참고할 수 있습니다.";
-    } else if(supportRatio > 0.62){
-      strengthLine = "월령과 통근을 포함한 간이 점수에서 일간을 돕는 힘이 " + Math.round(supportRatio*100) + "%입니다. 신강 쪽으로 기운 명식으로 참고할 수 있습니다.";
-    } else {
-      strengthLine = "월령과 통근을 포함한 간이 점수에서 일간을 돕는 힘이 " + Math.round(supportRatio*100) + "%입니다. 중화에 가까운 편으로 참고할 수 있습니다.";
-    }
-    document.getElementById("strengthLine").textContent = strengthLine;
-
-    var all = [];
-    all.push(SIPSUNG_KR[bz.getYearShiShenGan()] || bz.getYearShiShenGan());
-    all.push(SIPSUNG_KR[bz.getMonthShiShenGan()] || bz.getMonthShiShenGan());
-    if(hasTime) all.push(SIPSUNG_KR[bz.getTimeShiShenGan()] || bz.getTimeShiShenGan());
-    all.push(SIPSUNG_KR[bz.getYearShiShenZhi()[0]] || bz.getYearShiShenZhi()[0]);
-    all.push(SIPSUNG_KR[bz.getMonthShiShenZhi()[0]] || bz.getMonthShiShenZhi()[0]);
-    all.push(SIPSUNG_KR[bz.getDayShiShenZhi()[0]] || bz.getDayShiShenZhi()[0]);
-    if(hasTime) all.push(SIPSUNG_KR[bz.getTimeShiShenZhi()[0]] || bz.getTimeShiShenZhi()[0]);
-
-    function count(names){ return all.filter(function(x){ return names.indexOf(x) >= 0; }).length; }
-
-    var bullets = [];
-    var c;
-
-    c = count(["식신","상관"]);
-    if(c >= 2) bullets.push("식신·상관이 여럿 있어 아이디어를 구체적인 결과물로 만들어내는 힘이 좋은 편이에요. 새로운 걸 만들고 표현하는 일에서 에너지를 얻는 타입입니다.");
-    else if(c === 1) bullets.push("식신 또는 상관이 하나 있어, 상황에 따라 표현력·기획력을 발휘하는 구간이 있습니다.");
-
-    c = count(["편재","정재"]);
-    if(c >= 3) bullets.push("재성이 세 개 이상으로 많은 편이에요. 돈이 될 기회 자체는 자주 오지만, " + (strengthLabel==="신약(身弱)" ? "일간이 약한 상태라 그걸 소화할 체력·판단 여력이 부족해지기 쉬우니 무리한 확장보다는 하나씩 지켜가는 방식이 유리해요." : "일간의 힘도 충분해 기회를 실제 성과로 잘 연결할 수 있는 편이에요."));
-    else if(c >= 1) bullets.push("재성이 자리 잡고 있어 실용적인 결과·수치에 대한 감각이 있는 편입니다.");
-
-    c = count(["정관","편관"]);
-    if(c >= 2) bullets.push("관성이 여럿이라 규칙·책임 안에서 움직일 때 안정감을 느끼는 편이에요. 다만 너무 몰리면 부담이 커질 수 있어요.");
-
-    c = count(["정인","편인"]);
-    if(c >= 2) bullets.push("인성이 든든해서 배움과 직관을 통해 스스로를 채우는 힘이 좋은 편이에요.");
-    else if(c === 1 && strengthLabel === "신약(身弱)") bullets.push("인성이 하나 있어 일간을 도와주긴 하지만, 혼자서는 다소 부족해 인성·비겁운이 들어오는 시기에 컨디션이 한결 나아지는 편이에요.");
-
-    c = count(["비견","겁재"]);
-    if(c >= 2) bullets.push("비겁이 뚜렷해서 협업하는 동료나 함께 일할 사람이 있을 때 힘을 더 잘 쓰는 편이에요.");
-
-    if(bullets.length === 0) bullets.push("특정 오행이나 십성으로 크게 치우치지 않고 비교적 고르게 분포된 사주예요.");
-
-    var list = document.getElementById("readingList");
-    list.innerHTML = bullets.map(function(b){ return "<li>" + b + "</li>"; }).join("");
-  }
-
-  // ---------- 운세 흐름: 대운 → 세운 → 월운 → 일운 ----------
-
-  var flow = { yun:null, daYunList:null, currentDaYun:null, currentYear:null, currentYM:null };
+	function renderReading(bz, pillarsData, wx, hasTime){
+	  var dayGan = pillarsData[2].gan;
+	  var dayEl = GAN_WUXING[dayGan];
+	  var st = calcStrength(bz, pillarsData, hasTime);
+	  
+	  // 강약 설명
+	  var strengthLine = "월령·통근·천간 지지를 종합한 점수에서 일간을 돕는 힘이 " 
+		+ Math.round(st.ratio * 100) + "%입니다. " 
+		+ (st.deukRyeong ? "월지의 도움을 받아 " : "월지의 도움은 약하지만 ")
+		+ st.label + "으로 판단됩니다.";
+	  document.getElementById("strengthLine").textContent = strengthLine;
+	  
+	  // 십성 카운트
+	  var all = [];
+	  all.push(SIPSUNG_KR[bz.getYearShiShenGan()] || bz.getYearShiShenGan());
+	  all.push(SIPSUNG_KR[bz.getMonthShiShenGan()] || bz.getMonthShiShenGan());
+	  if(hasTime) all.push(SIPSUNG_KR[bz.getTimeShiShenGan()] || bz.getTimeShiShenGan());
+	  all.push(SIPSUNG_KR[bz.getYearShiShenZhi()[0]] || bz.getYearShiShenZhi()[0]);
+	  all.push(SIPSUNG_KR[bz.getMonthShiShenZhi()[0]] || bz.getMonthShiShenZhi()[0]);
+	  all.push(SIPSUNG_KR[bz.getDayShiShenZhi()[0]] || bz.getDayShiShenZhi()[0]);
+	  if(hasTime) all.push(SIPSUNG_KR[bz.getTimeShiShenZhi()[0]] || bz.getTimeShiShenZhi()[0]);
+	  
+	  function count(names){ return all.filter(function(x){ return names.indexOf(x) >= 0; }).length; }
+	  
+	  var bullets = [];
+	  
+	  // 일간 오행 특성
+	  var elTraits = {
+		"木": "성장과 확장을 추구하며, 곧고 유연한 성정",
+		"火": "열정과 표현력이 강하고, 주변을 밝히는 성정",
+		"土": "안정과 중재를 중시하며, 포용력이 큰 성정",
+		"金": "결단력과 원칙을 중시하며, 예리한 성정",
+		"水": "지혜와 유연함이 뛰어나며, 흐르듯 적응하는 성정"
+	  };
+	  bullets.push(WUXING_KR[dayEl] + " 일간으로 " + elTraits[dayEl] + "을 타고났습니다.");
+	  
+	  // 강약에 따른 조언
+	  if(st.label === "신약(身弱)"){
+		bullets.push("일간의 힘이 약한 편이라, 인성(학습·휴식·귀인)과 비겁(동료·협력)의 도움을 받을 때 컨디션이 좋아집니다. 무리한 확장보다 내실을 다지는 전략이 유리합니다.");
+	  } else if(st.label === "신강(身强)"){
+		bullets.push("일간의 힘이 강한 편이라, 식상(표현·창작)과 재성(실행·성과)으로 에너지를 발산할 때 균형이 잡힙니다. 자기주장이 강해질 수 있으니 주변 의견을 경청하는 것이 좋습니다.");
+	  } else {
+		bullets.push("일간의 힘이 비교적 균형 잡혀 있어, 상황에 따라 유연하게 대응할 수 있는 명식입니다.");
+	  }
+	  
+	  // 십성별 조언
+	  var c;
+	  c = count(["식신","상관"]);
+	  if(c >= 2) bullets.push("식상이 " + c + "개로 표현력·창의성이 뛰어납니다. 기획, 예술, 콘텐츠, 강의 등 '만들고 말하는' 일에서 강점을 발휘합니다.");
+	  else if(c === 1) bullets.push("식상이 하나 있어 필요할 때 아이디어를 짜내는 힘이 있습니다.");
+	  
+	  c = count(["편재","정재"]);
+	  if(c >= 3) bullets.push("재성이 " + c + "개로 많습니다. 돈과 기회가 자주 오지만, " + (st.label === "신약(身弱)" ? "일간이 약해 소화가 버거울 수 있으니 한 번에 하나씩 집중하는 게 유리합니다." : "일간이 강해 기회를 실질적 성과로 연결하는 힘이 좋습니다."));
+	  else if(c >= 1) bullets.push("재성이 자리 잡고 있어 실용적 감각과 수치 감각이 있습니다.");
+	  
+	  c = count(["정관","편관"]);
+	  if(c >= 2) bullets.push("관성이 " + c + "개로 규칙과 책임을 중시합니다. 조직이나 시스템 안에서 안정감을 느끼지만, 스트레스 관리가 필요합니다.");
+	  else if(c === 1) bullets.push("관성이 하나 있어 맡은 바를 끝까지 해내는 책임감이 있습니다.");
+	  
+	  c = count(["정인","편인"]);
+	  if(c >= 2) bullets.push("인성이 " + c + "개로 배움과 직관이 뛰어납니다. 공부, 연구, 상담 분야에서 강점을 보입니다.");
+	  else if(c === 1 && st.label === "신약(身弱)") bullets.push("인성이 하나 있어 일간을 돕지만, 인성운이 들어오는 시기에 더 안정됩니다.");
+	  
+	  c = count(["비견","겁재"]);
+	  if(c >= 2) bullets.push("비겁이 " + c + "개로 자립심과 경쟁심이 강합니다. 협업보다는 독립적인 일에서 강점을 발휘할 수 있습니다.");
+	  
+	  // 합충형파해 반영
+	  var relations = [];
+	  var zhis = pillarsData.filter(function(p){ return hasTime || p.key !== "time"; }).map(function(p){ return p.zhi; });
+	  CHUNG.forEach(function(pair){
+		if(zhis.indexOf(pair[0]) >= 0 && zhis.indexOf(pair[1]) >= 0) relations.push("충(冲)");
+	  });
+	  if(relations.length > 0){
+		bullets.push("원국에 " + relations.join("·") + " 관계가 있어 변화와 이동이 많은 편입니다. 안정을 원한다면 환경을 자주 바꾸지 않는 것이 좋습니다.");
+	  }
+	  
+	  if(bullets.length === 0) bullets.push("특정 오행이나 십성으로 크게 치우치지 않고 비교적 고르게 분포된 사주입니다.");
+	  
+	  var list = document.getElementById("readingList");
+	  list.innerHTML = bullets.map(function(b){ return "<li>" + b + "</li>"; }).join("");
+	}
 
   function renderUnseFlow(bz, genderVal, hasTime){
     var yun = bz.getYun(Number(genderVal));
@@ -506,6 +710,13 @@
     })[0] || flow.daYunList[0];
     flow.currentDaYun = currentDaYun;
 
+    var displayList = flow.daYunList.slice(0, 10);
+    if(currentDaYun && displayList.indexOf(currentDaYun) === -1){
+      displayList.push(currentDaYun);
+      displayList.sort(function(a,b){ return a.getIndex() - b.getIndex(); });
+    }
+    flow.displayDaYunList = displayList;
+
     renderDaewoonTable();
     fillDaewoonSelect();
     daewoonSelect.value = String(currentDaYun.getIndex());
@@ -523,7 +734,7 @@
   function renderDaewoonTable(){
     var table = document.getElementById("daewoonTable");
     var nowYear = new Date().getFullYear();
-    var rows = flow.daYunList.slice(0, 8).map(function(dy){
+    var rows = flow.displayDaYunList.map(function(dy){
       var gz = dy.getGanZhi();
       var isCurrent = nowYear >= dy.getStartYear() && nowYear <= dy.getEndYear();
       return "<tr class=\"" + (isCurrent?"is-current":"") + "\" data-clickable data-index=\"" + dy.getIndex() + "\">" +
@@ -548,7 +759,7 @@
   }
 
   function fillDaewoonSelect(){
-    daewoonSelect.innerHTML = flow.daYunList.slice(0,8).map(function(dy){
+    daewoonSelect.innerHTML = flow.displayDaYunList.map(function(dy){
       return '<option value="'+dy.getIndex()+'">'+dy.getStartYear()+'~'+dy.getEndYear()+'년 ('+dy.getGanZhi()+' '+ganzhiKrFromStr(dy.getGanZhi())+')</option>';
     }).join("");
     daewoonSelect.onchange = function(){

@@ -43,15 +43,22 @@
       </div>
     </div>
 
-    <div class="field-row">
-      <div class="field grow">
-        <label for="date">생년월일</label>
-        <input type="date" id="date" required min="1900-01-01" max="2035-12-31">
-      </div>
-      <div class="field" id="leapField" hidden>
-        <label class="checkbox-label"><input type="checkbox" id="leap"> 윤달</label>
-      </div>
+    <div class="field" id="solarDateField">
+      <label for="date">생년월일</label>
+      <input type="date" id="date" required min="1900-01-01" max="2035-12-31">
     </div>
+
+    <div class="field" id="lunarDateField" hidden>
+      <span class="label-like">생년월일 (음력)</span>
+      <div class="lunar-date-row">
+        <select id="lunarYear" aria-label="음력 연도" required></select>
+        <select id="lunarMonth" aria-label="음력 월" required></select>
+        <select id="lunarDay" aria-label="음력 일" required></select>
+      </div>
+      <p class="field-help" id="lunarPreview"></p>
+    </div>
+
+    <p class="form-error" id="formError" hidden></p>
 
     <div class="field-row">
       <div class="field grow">
@@ -62,6 +69,7 @@
         <label class="checkbox-label"><input type="checkbox" id="timeUnknown"> 시간 모름</label>
       </div>
     </div>
+    <p class="field-help" id="timeHelp">시각을 비워두면 시간 미상으로 계산해요. 시주는 결과에서 빠지지만 나머지 분석은 그대로 볼 수 있어요.</p>
 
     <div class="field">
       <span class="label-like">자시(子時) 처리</span>
@@ -112,6 +120,13 @@
 
     <div class="card">
       <h3 class="section-title">십성 배치</h3>
+      <ul class="sipsung-legend">
+        <li><span class="legend-dot" data-g="bigyeop"></span>비견·겁재</li>
+        <li><span class="legend-dot" data-g="siksang"></span>식신·상관</li>
+        <li><span class="legend-dot" data-g="jaeseong"></span>편재·정재</li>
+        <li><span class="legend-dot" data-g="gwanseong"></span>편관·정관</li>
+        <li><span class="legend-dot" data-g="inseong"></span>편인·정인</li>
+      </ul>
       <div class="table-wrap">
         <table class="sipsung-table" id="sipsungTable"></table>
       </div>
